@@ -16,9 +16,13 @@ import {
 } from '../components/ui/drawer';
 
 import CarroCompra from '../componentes/CarroCompra';
+import { useCarrito } from '../hooks/useCarrito';
+import Categorias from '../componentes/Categorias';
+import SelectBox from '../componentes/SelectBox';
 
 
 export function Header() {
+  const { cantidadTotal } = useCarrito();
 
   return (
 
@@ -36,7 +40,7 @@ export function Header() {
             LOGO
         ==================================================== */}
 
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
 
           <NavLink to="/">
 
@@ -49,6 +53,8 @@ export function Header() {
           </NavLink>
 
         </div>
+
+        <SelectBox />
 
 
         {/* ===================================================
@@ -176,7 +182,7 @@ export function Header() {
 
                 {/* Cantidad */}
 
-                <span
+                {cantidadTotal > 0 && <span
                   className="
                     absolute
                     -right-2
@@ -193,8 +199,8 @@ export function Header() {
                     text-white
                   "
                 >
-                  4
-                </span>
+                  {cantidadTotal > 99 ? '99+' : cantidadTotal}
+                </span>}
 
 
                 <span className="mt-1 hidden text-xs sm:block">
@@ -225,92 +231,10 @@ export function Header() {
           MENÚ NARANJA
       ====================================================== */}
 
-      <nav className="bg-orange-500">
-
-        <div className="container mx-auto flex items-center justify-center px-4">
-
-
-          <NavLink
-            to="/"
-            className={({ isActive }) =>
-              `
-                px-6
-                py-3
-                text-sm
-                font-medium
-                transition
-                ${isActive
-                ? 'bg-orange-700 text-white'
-                : 'text-white hover:bg-orange-600'
-              }
-              `
-            }
-          >
-            Inicio
-          </NavLink>
-
-
-          <NavLink
-            to="/productos"
-            className={({ isActive }) =>
-              `
-                px-6
-                py-3
-                text-sm
-                font-medium
-                transition
-                ${isActive
-                ? 'bg-orange-700 text-white'
-                : 'text-white hover:bg-orange-600'
-              }
-              `
-            }
-          >
-            Productos
-          </NavLink>
-
-
-          <NavLink
-            to="/contacto"
-            className={({ isActive }) =>
-              `
-                px-6
-                py-3
-                text-sm
-                font-medium
-                transition
-                ${isActive
-                ? 'bg-orange-700 text-white'
-                : 'text-white hover:bg-orange-600'
-              }
-              `
-            }
-          >
-            Contacto
-          </NavLink>
-
-
-          <NavLink
-            to="/dolibarr/productos"
-            className={({ isActive }) =>
-              `
-                px-6
-                py-3
-                text-sm
-                font-medium
-                transition
-                ${isActive
-                ? 'bg-orange-700 text-white'
-                : 'text-white hover:bg-orange-600'
-              }
-              `
-            }
-          >
-            Productos Dolibarr
-          </NavLink>
-
+      <nav aria-label="Categorías de productos" className="bg-orange-500">
+        <div className="container mx-auto px-4">
+          <Categorias variant="horizontal" />
         </div>
-
       </nav>
 
     </header>

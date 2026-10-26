@@ -11,6 +11,8 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import AppRoutes from './routes/AppRoutes';
 import { AuthProvider } from './context/AuthContext';
+import { CarritoProvider } from './context/CarritoContext';
+import { AlmacenProvider } from './context/AlmacenContext';
 
 
 function App() {
@@ -19,7 +21,11 @@ function App() {
   return (
 
     <AuthProvider>
-      <AppRoutes />
+      <CarritoProvider>
+        <AlmacenProvider>
+          <AppRoutes />
+        </AlmacenProvider>
+      </CarritoProvider>
     </AuthProvider>
     
   )

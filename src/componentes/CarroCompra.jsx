@@ -1,106 +1,14 @@
-import { useState } from 'react';
 import {
     Minus,
     Plus,
     Trash2,
     ShoppingBag,
+    Package,
 } from 'lucide-react';
+import { useCarrito } from '../hooks/useCarrito';
 
 export default function CarroCompra() {
-    // =========================================================
-    // PRODUCTOS DE EJEMPLO
-    // =========================================================
-
-    const [productos, setProductos] = useState([
-        {
-            id: 1,
-            nombre: 'Leche Pil 1 Litro',
-            precio: 8.50,
-            cantidad: 2,
-            imagen: 'https://placehold.co/100x100?text=Leche',
-        },
-        {
-            id: 2,
-            nombre: 'Arroz 1 Kg',
-            precio: 7.50,
-            cantidad: 1,
-            imagen: 'https://placehold.co/100x100?text=Arroz',
-        },
-        {
-            id: 3,
-            nombre: 'Aceite Vegetal 900 ml',
-            precio: 12.90,
-            cantidad: 1,
-            imagen: 'https://placehold.co/100x100?text=Aceite',
-        },
-    ]);
-
-    // =========================================================
-    // AUMENTAR CANTIDAD
-    // =========================================================
-
-    const aumentarCantidad = (id) => {
-        setProductos((productosActuales) =>
-            productosActuales.map((producto) =>
-                producto.id === id
-                    ? {
-                        ...producto,
-                        cantidad: producto.cantidad + 1,
-                    }
-                    : producto
-            )
-        );
-    };
-
-    // =========================================================
-    // DISMINUIR CANTIDAD
-    // =========================================================
-
-    const disminuirCantidad = (id) => {
-        setProductos((productosActuales) =>
-            productosActuales
-                .map((producto) =>
-                    producto.id === id
-                        ? {
-                            ...producto,
-                            cantidad: producto.cantidad - 1,
-                        }
-                        : producto
-                )
-                .filter((producto) => producto.cantidad > 0)
-        );
-    };
-
-    // =========================================================
-    // ELIMINAR PRODUCTO
-    // =========================================================
-
-    const eliminarProducto = (id) => {
-        setProductos((productosActuales) =>
-            productosActuales.filter(
-                (producto) => producto.id !== id
-            )
-        );
-    };
-
-    // =========================================================
-    // CANTIDAD TOTAL DE PRODUCTOS
-    // =========================================================
-
-    const cantidadTotal = productos.reduce(
-        (total, producto) => total + producto.cantidad,
-        0
-    );
-
-    // =========================================================
-    // SUBTOTAL
-    // =========================================================
-
-    const subtotal = productos.reduce(
-        (total, producto) =>
-            total + producto.precio * producto.cantidad,
-        0
-    );
+    const { productos, cantidadTotal, subtotal, aumentarCantidad, disminuirCantidad, eliminarProducto } = useCarrito();
 
     // =========================================================
     // CARRITO VACÍO
@@ -212,18 +120,17 @@ export default function CarroCompra() {
                   IMAGEN
               ================================================== */}
 
-                            <img
-                                src={producto.imagen}
-                                alt={producto.nombre}
-                                className="
-                  h-20
-                  w-20
-                  flex-shrink-0
-                  rounded-lg
-                  border
-                  object-cover
-                "
-                            />
+                            {producto.imagen ? (
+                                <img
+                                    src={producto.imagen}
+                                    alt={producto.nombre}
+                                    className="h-20 w-20 flex-shrink-0 rounded-lg border object-cover"
+                                />
+                            ) : (
+                                <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-lg border bg-gray-50 text-gray-400" aria-label="Imagen no disponible">
+                                    <Package size={24} aria-hidden="true" />
+                                </div>
+                            )}
 
                             {/* =================================================
                   INFORMACIÓN
@@ -276,11 +183,14 @@ export default function CarroCompra() {
                                             onClick={() =>
                                                 disminuirCantidad(producto.id)
                                             }
+                                            disabled={producto.cantidad <= 1}
                                             className="
                         p-1.5
                         text-gray-600
                         transition
                         hover:bg-gray-100
+                      disabled:cursor-not-allowed
+                      disabled:opacity-40
                       "
                                             aria-label="Disminuir cantidad"
                                         >
@@ -296,11 +206,14 @@ export default function CarroCompra() {
                                             onClick={() =>
                                                 aumentarCantidad(producto.id)
                                             }
+                                            disabled={producto.stock != null && producto.cantidad >= producto.stock}
                                             className="
                         p-1.5
                         text-gray-600
                         transition
                         hover:bg-gray-100
+                      disabled:cursor-not-allowed
+                      disabled:opacity-40
                       "
                                             aria-label="Aumentar cantidad"
                                         >

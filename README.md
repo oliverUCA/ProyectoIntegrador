@@ -1,6 +1,22 @@
-# React + Vite
+# Tienda con React, Vite y Dolibarr
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+El catálogo consulta directamente la API REST de Dolibarr desde el navegador. No requiere un backend local.
+
+1. Copia `.env.example` como `.env.local` y ajusta `VITE_DOLIBARR_URL` si la instancia usa otra dirección.
+2. Inicia la aplicación con `npm run dev`.
+3. Abre `/dolibarr/productos`, configura la API key o inicia sesión para obtener un token.
+4. Regresa al catálogo; las categorías del sidebar y los productos se consultan directamente en Dolibarr.
+
+Las llamadas desde el navegador incluyen la clave en la cabecera `DOLAPIKEY`, así que queda accesible para quien use el navegador. La instancia Dolibarr también debe permitir solicitudes CORS desde el origen de la aplicación. Para un catálogo público en producción, una clave administrativa no debe exponerse en el cliente.
+
+El catálogo muestra artículos activos, precio TTC en Bs cuando Dolibarr lo devuelve y disponibilidad según `stock_reel`.
+
+El almacén se elige desde el selector del Header y queda guardado en el navegador. El catálogo muestra solo artículos con stock en el almacén elegido; el detalle usa el mismo almacén y muestra stock no informado si Dolibarr no devuelve sus existencias.
+
+## Comandos
+
+- `npm run dev`: frontend de Vite.
+- `npm run build`: compilación de producción del frontend.
 
 Currently, two official plugins are available:
 

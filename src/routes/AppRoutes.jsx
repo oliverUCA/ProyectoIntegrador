@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NotFound from '../pages/NotFound';
 import MainLayout from '../layouts/MainLayout';
 import Login from '../componentes/LoginForm';
-import Productos from '../pages/products';
+import CatalogoProductos from '../pages/CatalogoProductos';
 import ProductDetail from '../pages/ProductDetail';
 import UncontrolInput from '../pages/UncontrolInput';
 import ControlledInput from '../pages/ControlledInput';
@@ -24,7 +24,7 @@ const AppRoutes = () => {
         <Route path='/login' element={<Login />} />
         <Route element={<MainLayout />} >
           <Route index element={<Inicio />} />
-          <Route path="/productos" element={<Productos />} />
+          <Route path="/productos" element={<CatalogoProductos />} />
           <Route path="/uncontrolinput" element={<UncontrolInput />} />
           <Route path="/controlledInput" element={<ControlledInput />} />
           <Route path="/formulario" element={<FormularioRegistro />} />

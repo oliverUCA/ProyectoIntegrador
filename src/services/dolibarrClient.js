@@ -8,11 +8,12 @@ export const DOLIBARR_BASE_URL =
 const STORAGE_KEY = 'dolibarr_api_key';
 
 export const getApiKey = () =>
-  localStorage.getItem(STORAGE_KEY) || import.meta.env.VITE_DOLIBARR_API_KEY || '';
+  localStorage.getItem(STORAGE_KEY) || localStorage.getItem('jwt-token') || '';
 
 export const setApiKey = (key) => {
   if (key) localStorage.setItem(STORAGE_KEY, key.trim());
   else localStorage.removeItem(STORAGE_KEY);
+  window.dispatchEvent(new Event('dolibarr-key-changed'));
 };
 
 const dolibarrClient = axios.create({

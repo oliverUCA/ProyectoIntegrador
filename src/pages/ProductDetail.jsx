@@ -1,59 +1,170 @@
-import React from "react";
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Check, ImageOff, Loader2, Package, ShoppingCart } from 'lucide-react';
+import { getApiKey } from '../services/dolibarrClient';
+import { getImagenProducto, getProductoCatalogoById } from '../services/catalogoService';
+import { useCarrito } from '../hooks/useCarrito';
+import { useAlmacen } from '../hooks/useAlmacen';
 
-import { useParams, useNavigate, Link } from "react-router-dom";
-
-const PRODUCTS_DATA = [
-  {id: '101', name: 'Servidor Rack IBM', categoria: 'Hardware', price: 1200 },
-  {id: '102', name: 'Laptop Dell XPS 13', categoria: 'Hardware', price: 1500 },
-  {id: '103', name: 'Monitor LG UltraWide', categoria: 'Hardware', price: 400 },
-  {id: '104', name: 'Teclado Mecánico Corsair', categoria: 'Hardware', price: 100 },
-  {id: '105', name: 'Mouse Logitech MX Master 3', categoria: 'Hardware', price: 80 },
-  {id: '106', name: 'Auriculares Sony WH-1000XM4', categoria: 'Hardware', price: 350 },
-];
+const money = new Intl.NumberFormat('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const ProductDetail = () => {
-
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { agregarProducto, productos: productosCarrito } = useCarrito();
+  const { selectedId: warehouseId } = useAlmacen();
+  const [revision, setRevision] = useState(0);
+  const [result, setResult] = useState({ key: null, product: null, error: '' });
+  const [imageResult, setImageResult] = useState({ key: null, url: '' });
+  const [agregado, setAgregado] = useState(false);
+  const apiKey = getApiKey();
+  const validId = /^\d+$/.test(id || '');
+  const queryKey = `${Boolean(apiKey)}:${warehouseId}:${id}:${revision}`;
+  const loading = Boolean(apiKey) && validId && result.key !== queryKey;
+  const product = result.key === queryKey ? result.product : null;
+  const cantidadEnCarrito = product ? productosCarrito.find((item) => item.id === product.id)?.cantidad || 0 : 0;
+  const limiteAlcanzado = product?.stock != null && cantidadEnCarrito >= product.stock;
+  const error = result.key === queryKey ? result.error : '';
+  const imageUrl = imageResult.key === `${queryKey}:${product?.imagePath}` ? imageResult.url : '';
+  const returnTo = location.state?.from || '/productos';
 
-  // Busqueda de producto por ID en el arreglo de datos (Array.prototype.find)
-  const product = PRODUCTS_DATA.find((item) => item.id === id);
+  useEffect(() => {
+    const handleKeyChange = () => setRevision((value) => value + 1);
+    window.addEventListener('dolibarr-key-changed', handleKeyChange);
+    window.addEventListener('storage', handleKeyChange);
+    return () => {
+      window.removeEventListener('dolibarr-key-changed', handleKeyChange);
+      window.removeEventListener('storage', handleKeyChange);
+    };
+  }, []);
 
-  const handleBack = () => { 
-    navigate('/productos');
-  }
+  useEffect(() => {
+    if (!apiKey || !validId) return undefined;
+    const controller = new AbortController();
+    getProductoCatalogoById(id, { signal: controller.signal, warehouseId })
+      .then((data) => {
+        if (!controller.signal.aborted) setResult({ key: queryKey, product: data, error: '' });
+      })
+      .catch((requestError) => {
+        if (!controller.signal.aborted) {
+          setResult({ key: queryKey, product: null, error: requestError.response?.data?.error || requestError.message });
+        }
+      });
+    return () => controller.abort();
+  }, [apiKey, warehouseId, id, queryKey, revision, validId]);
 
-  const handleSimulatePurchase = () => {
-    alert(`Compra simulada correcta del producto: ${product?.name}`);
-    navigate('/');
-  }
+  useEffect(() => {
+    if (!product?.imagePath) return undefined;
+    const controller = new AbortController();
+    let objectUrl = '';
+    const imageKey = `${queryKey}:${product.imagePath}`;
+    getImagenProducto(product.imagePath, { signal: controller.signal })
+      .then((url) => {
+        objectUrl = url;
+        if (!controller.signal.aborted) setImageResult({ key: imageKey, url });
+        else URL.revokeObjectURL(url);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setImageResult({ key: imageKey, url: '' });
+      });
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [product, queryKey]);
 
-  if (!product) {
+  const volver = () => {
+    if (location.key !== 'default') navigate(-1);
+    else navigate(returnTo);
+  };
+
+  if (!apiKey) {
     return (
-      <div className="px-3 py-1 text-center">
-        <h2 className='text-2xl, text-blue-800'> Producto no encontrado  </h2>
-        <p className='text-5xl  mx-1 my-0 text-blue-600'>El producto con ID {id} no existe en el catálogo.</p>
-        <button className="mt-5 w-full rounded-4xl bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 hover: cursor-pointer" onClick={handleBack}>Volver al Catálogo</button>  
-      </div>
+      <section className="mx-auto max-w-4xl px-4 py-8">
+        <h1 className="text-2xl font-bold">Conecta Dolibarr</h1>
+        <p className="mt-2 text-muted-foreground">Necesitas configurar la conexión para consultar este producto.</p>
+        <Link to="/dolibarr/productos" className="mt-5 inline-flex min-h-10 items-center rounded-md bg-hiper-navy px-4 text-white hover:bg-hiper-navy-dark">Configurar conexión</Link>
+      </section>
     );
   }
-  
+
+  if (loading) {
+    return <div role="status" className="flex min-h-64 items-center justify-center gap-3 text-muted-foreground"><Loader2 className="size-5 animate-spin" />Cargando producto…</div>;
+  }
+
+  if (error) {
+    return (
+      <section role="alert" className="mx-auto max-w-3xl px-4 py-12 text-center">
+        <h1 className="text-2xl font-bold">No se pudo cargar el producto</h1>
+        <p className="mt-2 text-muted-foreground">{error}</p>
+        <div className="mt-6 flex justify-center gap-3">
+          <button type="button" onClick={() => setRevision((value) => value + 1)} className="inline-flex min-h-10 items-center rounded-md bg-hiper-navy px-4 text-white hover:bg-hiper-navy-dark">Reintentar</button>
+          <button type="button" onClick={volver} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-4 text-sm hover:bg-accent">
+            <ArrowLeft className="size-4" aria-hidden="true" /> Volver al catálogo
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  if (!validId || !product) {
+    return (
+      <section className="mx-auto max-w-3xl px-4 py-12 text-center">
+        <h1 className="text-2xl font-bold">Producto no encontrado</h1>
+        <p className="mt-2 text-muted-foreground">{error || `No existe un producto activo con el ID ${id}.`}</p>
+        <button type="button" onClick={volver} className="mt-6 inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-4 text-sm hover:bg-accent">
+          <ArrowLeft className="size-4" aria-hidden="true" /> Volver al catálogo
+        </button>
+      </section>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10">
-      <h2 className="text-3xl font-bold mb-2 text-gray-900">Detalle del Producto</h2>
-      <p className="text-gray-600 mb-8">Información detallada del producto seleccionado</p>
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-md hover:shadow-lg transition-shadow duration-300">
-        <h3 className="text-xl font-semibold text-gray-900">{product.name}</h3>
-        <p className="text-gray-600">Categoría: {product.categoria}</p>
-        <p className="text-gray-600">Precio: ${product.price}</p>
-        <button className="mt-5 w-full rounded-4xl bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 hover: cursor-pointer" onClick={handleSimulatePurchase}>Simular Compra</button>
-        <button className="mt-5 w-full rounded-4xl bg-gray-600 py-3 text-sm font-semibold text-white hover:bg-gray-500 hover: cursor-pointer" onClick={handleBack}>Volver al Catálogo</button>
+    <article className="mx-auto max-w-5xl px-4 py-6 md:px-6">
+      <button type="button" onClick={volver} className="mb-5 inline-flex min-h-10 items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="size-4" aria-hidden="true" /> Volver al catálogo
+      </button>
+      <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <div className="flex min-h-72 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+          {imageUrl ? (
+            <img src={imageUrl} alt={product.name} className="max-h-112 w-full object-contain" onError={() => setImageResult({ key: `${queryKey}:${product.imagePath}`, url: '' })} />
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-muted-foreground" aria-label="Imagen no disponible">
+              {product.imagePath ? <ImageOff className="size-10" aria-hidden="true" /> : <Package className="size-10" aria-hidden="true" />}
+              <span className="text-sm">Imagen no disponible</span>
+            </div>
+          )}
+        </div>
+        <div className="py-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-hiper-orange">Producto</p>
+          <h1 className="mt-2 text-2xl font-bold text-foreground">{product.name}</h1>
+          {product.reference && <p className="mt-2 text-sm text-muted-foreground">Referencia: {product.reference}</p>}
+          <p className="mt-5 whitespace-pre-line text-sm leading-6 text-muted-foreground">{product.description || 'Este producto no tiene descripción.'}</p>
+          <div className="mt-7 border-t border-border pt-5">
+            <p className="text-sm text-muted-foreground">Precio</p>
+            <p className="mt-1 text-2xl font-bold text-hiper-navy">Bs {money.format(product.priceBs)}</p>
+          </div>
+          <div className="mt-5 rounded-md bg-muted/70 p-4">
+            <p className="text-sm font-semibold">Disponibilidad</p>
+            <p className={`mt-1 text-sm ${product.available ? 'text-emerald-700' : product.available === false ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {product.available ? `Disponible${product.stock != null ? ` · ${product.stock} unidades` : ''}` : product.available === false ? 'Agotado' : 'Stock no informado'}
+            </p>
+            {product.warehouseId && <p className="mt-1 text-xs text-muted-foreground">Almacén configurado: {product.warehouseId}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => setAgregado(agregarProducto({ ...product, imageUrl }))}
+            disabled={product.available === false || limiteAlcanzado}
+            className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-hiper-orange px-4 text-sm font-semibold text-white hover:bg-hiper-orange-dark disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {agregado ? <Check className="size-4" aria-hidden="true" /> : <ShoppingCart className="size-4" aria-hidden="true" />}
+            {limiteAlcanzado ? 'Límite de stock alcanzado' : agregado ? 'Agregado al carrito' : 'Agregar al carrito'}
+          </button>
+        </div>
       </div>
-    </div>
+    </article>
   );
-
-
-
-}
+};
 
 export default ProductDetail;
