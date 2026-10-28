@@ -2,15 +2,23 @@ import axios from 'axios';
 
 // Cliente HTTP centralizado para la API REST de Dolibarr.
 // La autenticación se hace con la cabecera DOLAPIKEY.
+// Configuración por variables de entorno (.env.local en desarrollo,
+// Project Settings → Environment Variables en Vercel).
 export const DOLIBARR_BASE_URL =
-  import.meta.env.VITE_DOLIBARR_URL || 'https://hipermaxi.with11.dolicloud.com/api/index.php';
+  import.meta.env.VITE_DOLIBARR_API_URL || import.meta.env.VITE_DOLIBARR_URL || '';
+
+const ENV_API_KEY = import.meta.env.VITE_DOLIBARR_API_KEY || '';
+
+if (!DOLIBARR_BASE_URL) {
+  console.error('Falta la variable de entorno VITE_DOLIBARR_API_URL.');
+}
 
 const STORAGE_KEY = 'dolibarr_api_key';
 
 export const getApiKey = () =>
   localStorage.getItem('jwt-token') ||
   localStorage.getItem(STORAGE_KEY) ||
-  import.meta.env.VITE_DOLIBARR_API_KEY ||
+  ENV_API_KEY ||
   '';
 
 export const setApiKey = (key) => {
