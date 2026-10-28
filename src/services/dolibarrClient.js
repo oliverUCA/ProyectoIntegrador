@@ -4,8 +4,27 @@ import axios from 'axios';
 // La autenticación se hace con la cabecera DOLAPIKEY.
 // Configuración por variables de entorno (.env.local en desarrollo,
 // Project Settings → Environment Variables en Vercel).
-export const DOLIBARR_BASE_URL =
-  import.meta.env.VITE_DOLIBARR_API_URL || import.meta.env.VITE_DOLIBARR_URL || '';
+/**
+ * Vercel variables can accidentally contain a Markdown link when a URL is
+ * copied from a chat or document. Axios then treats the whole value as a
+ * relative path, producing requests such as /[https:/...](https:/...)/login.
+ */
+export const normalizeDolibarrBaseUrl = (rawValue) => {
+  let value = String(rawValue || '').trim();
+  const markdownUrl = value.match(/\]\((https?:\/{1,2}[^)]+)\)/i);
+  const plainUrl = value.match(/https?:\/{1,2}[^\s\])]+/i);
+
+  value = markdownUrl?.[1] || plainUrl?.[0] || value;
+  value = value.replace(/^(https?):\/(?!\/)/i, '$1://');
+  return value.replace(/\/+$/, '');
+};
+
+const configuredBaseUrl = normalizeDolibarrBaseUrl(
+  import.meta.env.VITE_DOLIBARR_API_URL || import.meta.env.VITE_DOLIBARR_URL,
+);
+
+// vercel.json proxies this path to Dolibarr when no public URL is configured.
+export const DOLIBARR_BASE_URL = configuredBaseUrl || (import.meta.env.PROD ? '/dolibarr-api' : '');
 
 const ENV_API_KEY = import.meta.env.VITE_DOLIBARR_API_KEY || '';
 
