@@ -7,7 +7,9 @@ import {
 } from 'lucide-react';
 import { useCarrito } from '../hooks/useCarrito';
 
-export default function CarroCompra() {
+// El modal de pago lo renderiza Header, fuera del Drawer, para que siga
+// visible cuando el Drawer se cierra tras confirmar el pago.
+export default function CarroCompra({ onPagar }) {
     const { productos, cantidadTotal, subtotal, aumentarCantidad, disminuirCantidad, eliminarProducto } = useCarrito();
 
     // =========================================================
@@ -303,7 +305,9 @@ export default function CarroCompra() {
           ================================================== */}
 
                     <button
+                        id="btn-proceder-pago"
                         type="button"
+                        onClick={onPagar}
                         className="
               mt-3
               w-full

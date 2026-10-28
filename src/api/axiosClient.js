@@ -1,10 +1,10 @@
 import axios from 'axios';
+import { DOLIBARR_BASE_URL } from '../services/dolibarrClient';
 
 const axiosClient = axios.create({
-    baseURL: 'https://hipermaxi.with11.dolicloud.com/api/index.php',
+    baseURL: DOLIBARR_BASE_URL,
     headers: {
-        'Content-Type': 'application/json',
-        'DOLAPIKEY': 'JesusAPI1234'
+        'Content-Type': 'application/json'
     }
 });
 

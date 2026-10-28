@@ -1,29 +1,26 @@
-import { NavLink } from 'react-router-dom';
-import { ArrowRight, Boxes, CodeXml, House, ListChecks, LogIn, Mail, PanelLeft, ShoppingBag, SlidersHorizontal, TextCursorInput } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { ArrowRight, Boxes, CodeXml, House, ListChecks, LogIn, LogOut, Mail, PanelLeft, ShoppingBag, SlidersHorizontal, TextCursorInput } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 // Enlaces agrupados por sección
 const secciones = [
   {
-    titulo: 'Tienda',
+    titulo: 'Gestión de productos',
     enlaces: [
       { to: '/', label: 'Inicio', icono: House },
-      { to: '/productos', label: 'Productos', icono: ShoppingBag },
-      { to: '/contacto', label: 'Contacto', icono: Mail },
-      { to: '/dolibarr/productos', label: 'Productos Dolibarr', icono: Boxes },
+      // { to: '/productos', label: 'Productos', icono: ShoppingBag },
+      // { to: '/contacto', label: 'Contacto', icono: Mail },
+      { to: '/gestionar/productos', label: 'Productos', icono: Boxes },
     ],
   },
-  {
-    titulo: 'Ejercicios',
-    enlaces: [
-      { to: '/uncontrolinput', label: 'Input no controlado', icono: TextCursorInput },
-      { to: '/controlledInput', label: 'Input controlado', icono: SlidersHorizontal },
-      { to: '/formulario', label: 'Formulario', icono: ListChecks },
-    ],
-  },
-  {
-    titulo: 'Cuenta',
-    enlaces: [{ to: '/login', label: 'Iniciar sesión', icono: LogIn }],
-  },
+  // {
+  //   titulo: 'Ejercicios',
+  //   enlaces: [
+  //     { to: '/uncontrolinput', label: 'Input no controlado', icono: TextCursorInput },
+  //     { to: '/controlledInput', label: 'Input controlado', icono: SlidersHorizontal },
+  //     { to: '/formulario', label: 'Formulario', icono: ListChecks },
+  //   ],
+  // },
 ];
 
 // Estilo dinámico para resaltar el enlace activo
@@ -35,17 +32,17 @@ const getLinkClassName = ({ isActive }) =>
   }`;
 
 export function Sidebar() {
+  const { token, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const cerrarSesion = () => {
+    logout();
+    navigate('/');
+  };
+
   return (
     <aside className="flex w-20 shrink-0 flex-col border-r border-border bg-sidebar px-3 py-6 md:w-64 md:px-5">
-      <div className="mb-8 flex items-center justify-center gap-3 md:justify-start md:px-2">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-hiper-orange text-white shadow-sm">
-          <PanelLeft className="size-5" aria-hidden="true" />
-        </span>
-        <div className="hidden md:block">
-          <p className="text-sm font-semibold text-sidebar-foreground">Mi espacio</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Panel de navegación</p>
-        </div>
-      </div>
+     
 
       <nav aria-label="Menú lateral" className="space-y-7">
         {secciones.map((seccion) => (
@@ -70,6 +67,26 @@ export function Sidebar() {
             </ul>
           </div>
         ))}
+        <div>
+          <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:px-3 md:text-left md:text-xs">
+            Cuenta
+          </p>
+          <ul className="space-y-2">
+            <li>
+              {token ? (
+                <button type="button" title="Cerrar sesión" onClick={cerrarSesion} className={getLinkClassName({ isActive: false })}>
+                  <LogOut className="size-5 shrink-0" aria-hidden="true" />
+                  <span className="sr-only md:not-sr-only md:flex-1">Cerrar sesión</span>
+                </button>
+              ) : (
+                <NavLink to="/login" title="Iniciar sesión" className={getLinkClassName}>
+                  <LogIn className="size-5 shrink-0" aria-hidden="true" />
+                  <span className="sr-only md:not-sr-only md:flex-1">Iniciar sesión</span>
+                </NavLink>
+              )}
+            </li>
+          </ul>
+        </div>
       </nav>
 
       <div className="mt-auto hidden pt-10 md:block">

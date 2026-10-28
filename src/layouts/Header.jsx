@@ -1,10 +1,12 @@
 
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
   User,
   ShoppingCart,
   Search,
+  LogOut,
 } from 'lucide-react';
 
 import logo from '../assets/HiperLogo.png';
@@ -16,13 +18,43 @@ import {
 } from '../components/ui/drawer';
 
 import CarroCompra from '../componentes/CarroCompra';
+import CheckoutModal from '../componentes/CheckoutModal';
 import { useCarrito } from '../hooks/useCarrito';
 import Categorias from '../componentes/Categorias';
 import SelectBox from '../componentes/SelectBox';
+import LoginForm from '../componentes/LoginForm';
+import { useAuth } from '../context/AuthContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 
 
 export function Header() {
   const { cantidadTotal } = useCarrito();
+  const { token, user, logout } = useAuth();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [carritoOpen, setCarritoOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const currentSearch = searchParams.get('buscar') || '';
+
+  const buscarProductos = (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const search = String(formData.get('buscar') || '').trim();
+    const params = new URLSearchParams(searchParams);
+    params.delete('categoria');
+    params.delete('page');
+    params.delete('coincidenciasCategorias');
+    if (search) params.set('buscar', search);
+    else params.delete('buscar');
+    navigate({ pathname: '/productos', search: params.toString() ? `?${params}` : '' });
+  };
 
   return (
 
@@ -63,11 +95,14 @@ export function Header() {
 
         <div className="flex flex-1 justify-center">
 
-          <div className="relative w-full max-w-2xl">
-
+          <form onSubmit={buscarProductos} className="relative w-full max-w-2xl">
             <input
               type="text"
+              key={currentSearch}
+              name="buscar"
+              defaultValue={currentSearch}
               placeholder="¿Qué producto estás buscando?"
+              aria-label="Buscar productos en el almacén seleccionado"
               className="
                 w-full
                 rounded-full
@@ -88,7 +123,8 @@ export function Header() {
             />
 
             <button
-              type="button"
+              type="submit"
+              aria-label="Buscar productos"
               className="
                 absolute
                 right-1
@@ -111,7 +147,7 @@ export function Header() {
 
             </button>
 
-          </div>
+          </form>
 
         </div>
 
@@ -127,9 +163,12 @@ export function Header() {
               USUARIO
           ================================================== */}
 
-          <button
-            type="button"
-            className="
+          <Dialog open={accountOpen} onOpenChange={setAccountOpen}>
+            <button
+              type="button"
+              onClick={() => setAccountOpen(true)}
+              aria-label={token ? 'Abrir cuenta' : 'Iniciar sesión'}
+              className="
               flex
               flex-col
               items-center
@@ -137,25 +176,41 @@ export function Header() {
               transition
               hover:text-orange-500
             "
-          >
-
-            <User
-              size={25}
-              strokeWidth={1.8}
-            />
-
-            <span className="mt-1 hidden text-xs sm:block">
-              Mi cuenta
-            </span>
-
-          </button>
+            >
+              <User size={25} strokeWidth={1.8} aria-hidden="true" />
+              <span className="mt-1 hidden text-xs sm:block">{token ? user?.login || 'Mi cuenta' : 'Iniciar sesión'}</span>
+            </button>
+            <DialogContent className="max-w-md p-6">
+              {token ? (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Mi cuenta</DialogTitle>
+                    <DialogDescription>Sesión iniciada como {user?.login || 'usuario'}.</DialogDescription>
+                  </DialogHeader>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      logout();
+                      setAccountOpen(false);
+                    }}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-hiper-navy px-4 text-sm font-medium text-white hover:bg-hiper-navy-dark"
+                  >
+                    <LogOut className="size-4" aria-hidden="true" />
+                    Cerrar sesión
+                  </button>
+                </>
+              ) : (
+                <LoginForm variant="dialog" onSuccess={() => setAccountOpen(false)} />
+              )}
+            </DialogContent>
+          </Dialog>
 
 
           {/* =================================================
               CARRITO
           ================================================== */}
 
-          <Drawer>
+          <Drawer open={carritoOpen} onOpenChange={setCarritoOpen}>
 
             {/* Botón que abre el Drawer */}
 
@@ -216,11 +271,17 @@ export function Header() {
 
             <DrawerContent>
 
-              <CarroCompra />
+              <CarroCompra onPagar={() => setCheckoutOpen(true)} />
 
             </DrawerContent>
 
           </Drawer>
+
+          <CheckoutModal
+            open={checkoutOpen}
+            onClose={() => setCheckoutOpen(false)}
+            onPagoConfirmado={() => setCarritoOpen(false)}
+          />
 
         </div>
 

@@ -1,9 +1,12 @@
-import dolibarrClient, { DOLIBARR_BASE_URL } from './dolibarrClient';
+import dolibarrClient, { getApiKey } from './dolibarrClient';
 
 const PAGE_SIZE = 100;
 const CACHE_DURATION_MS = 30000;
 const productCache = new Map();
-const dolibarrRoot = DOLIBARR_BASE_URL.replace(/\/api\/index\.php\/?$/i, '');
+const productImageCache = new Map();
+
+// Limpia la caché de productos (p. ej. tras una venta) para leer el stock real.
+export const invalidarCacheCatalogo = () => productCache.clear();
 
 const listFrom = (data) => (Array.isArray(data) ? data : data?.data ?? []);
 const numberFrom = (value, fallback = 0) => {
@@ -37,7 +40,7 @@ const getProducts = async (categoryId, signal) => {
 };
 
 const getCachedProducts = async (categoryId, signal) => {
-  const cacheKey = `${localStorage.getItem('dolibarr_api_key') || localStorage.getItem('jwt-token') || ''}:${categoryId || 'all'}`;
+  const cacheKey = `${getApiKey()}:${categoryId || 'all'}`;
   const cached = productCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.products;
 
@@ -60,11 +63,6 @@ const toCatalogProduct = (product, warehouseId = '') => {
     ? product.stock_warehouse?.[warehouseId]?.real
     : product.stock_reel;
   const stock = warehouseStock == null ? null : numberFrom(warehouseStock, null);
-  const image = product.photo || product.image || product.image_url || product.photos?.[0];
-  const imagePath = typeof image === 'string'
-    ? image
-    : image?.url || image?.path || image?.file || image?.filename || '';
-
   return {
     id: String(product.id ?? product.rowid),
     reference: product.ref || '',
@@ -73,7 +71,6 @@ const toCatalogProduct = (product, warehouseId = '') => {
     priceBs,
     stock,
     warehouseId,
-    imagePath,
     available: stock == null ? null : stock > 0,
   };
 };
@@ -94,16 +91,43 @@ export const getProductoCatalogoById = async (id, { signal, warehouseId = '' } =
   }
 };
 
-export const getImagenProducto = async (imagePath, { signal } = {}) => {
-  if (!imagePath) return '';
-  let imageUrl = imagePath;
-  if (!/^(https?:|data:|blob:)/i.test(imagePath)) {
-    imageUrl = imagePath.startsWith('/')
-      ? `${dolibarrRoot}${imagePath}`
-      : `${dolibarrRoot}/viewimage.php?modulepart=product&file=${encodeURIComponent(imagePath)}`;
+export const getImagenProducto = async (product, { signal } = {}) => {
+  if (!product?.id) return '';
+  const apiKey = localStorage.getItem('dolibarr_api_key') || localStorage.getItem('jwt-token') || '';
+  const cacheKey = `${apiKey}:${product.id}`;
+  const cached = productImageCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.url;
+
+  try {
+    const { data: documents } = await dolibarrClient.get('/documents', {
+      params: { modulepart: 'product', id: product.id, limit: 100, page: 0 },
+      signal,
+    });
+    const imageDocument = listFrom(documents).find((document) =>
+      /\.(avif|gif|jpe?g|png|webp)$/i.test(document.relativename || document.name || '')
+    );
+    if (!imageDocument) return '';
+
+    const listedPath = imageDocument.relativename || imageDocument.name;
+    const originalFile = listedPath.includes('/')
+      ? listedPath
+      : [imageDocument.level1name || product.reference, listedPath].filter(Boolean).join('/');
+    const { data: downloaded } = await dolibarrClient.get('/documents/download', {
+      params: { modulepart: 'product', original_file: originalFile },
+      signal,
+    });
+    if (downloaded.encoding !== 'base64' || !downloaded.content) return '';
+
+    const contentType = downloaded['content-type'] || 'application/octet-stream';
+    const url = `data:${contentType};base64,${downloaded.content}`;
+    if (!signal?.aborted) {
+      productImageCache.set(cacheKey, { url, expiresAt: Date.now() + CACHE_DURATION_MS });
+    }
+    return url;
+  } catch (error) {
+    if (error.response?.status === 404) return '';
+    throw error;
   }
-  const { data } = await dolibarrClient.get(imageUrl, { responseType: 'blob', signal });
-  return URL.createObjectURL(data);
 };
 
 export const getProductosCatalogo = async ({

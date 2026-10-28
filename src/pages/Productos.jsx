@@ -1,84 +1,18 @@
 import { useEffect, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import {
-  Plus, Search, Pencil, Trash2, RefreshCw, KeyRound, ChevronLeft, ChevronRight,
-  Package, Wrench, AlertTriangle, Loader2, Barcode, ShoppingCart, Boxes,
+  Plus, Search, Pencil, Trash2, RefreshCw, ChevronLeft, ChevronRight,
+  Package, Wrench, AlertTriangle, Loader2, Barcode, Boxes,
 } from 'lucide-react';
 import useProductosDolibarr from '../hooks/useProductosDolibarr';
 import ProductoFormModal from '../componentes/dolibarr/ProductoFormModal';
 import ProductosDolibarrService from '../services/productosDolibarrService';
-import { getApiKey, setApiKey, getErrorMessage } from '../services/dolibarrClient';
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 const LIMIT = 10;
 const money = (v) =>
   Number(v || 0).toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-/* ---------- Modal de configuración de API key ---------- */
-const ApiKeyModal = ({ onClose, onSaved }) => {
-  const [key, setKey] = useState(getApiKey);
-  const [login, setLogin] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const guardar = (k) => {
-    setApiKey(k);
-    toast.success('API key guardada');
-    onSaved();
-    onClose();
-  };
-
-  const loginConUsuario = async () => {
-    setLoading(true);
-    try {
-      const token = await ProductosDolibarrService.login(login, password);
-      if (!token) throw new Error('No se recibió token');
-      guardar(token);
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const inputCls = 'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15';
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md space-y-5 rounded-3xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95">
-        <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-indigo-100 p-3 text-indigo-600"><KeyRound className="h-5 w-5" /></div>
-          <div>
-            <h3 className="!text-lg font-bold text-slate-800">Conexión a Dolibarr</h3>
-            <p className="text-xs text-slate-500">Se guarda en el navegador (localStorage)</p>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="api-key" className="text-xs font-semibold uppercase tracking-wide text-slate-500">API key (DOLAPIKEY)</label>
-          <input id="api-key" type="password" className={inputCls} value={key} onChange={(e) => setKey(e.target.value)} placeholder="Pega tu API key" />
-          <button id="btn-guardar-key" onClick={() => guardar(key)} disabled={!key.trim()}
-            className="w-full rounded-xl bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50">
-            Guardar API key
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3 text-xs text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" /> o inicia sesión <span className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <div className="space-y-2">
-          <input id="login-usuario" className={inputCls} placeholder="Usuario" value={login} onChange={(e) => setLogin(e.target.value)} />
-          <input id="login-password" type="password" className={inputCls} placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <button id="btn-login" onClick={loginConUsuario} disabled={loading || !login || !password}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50">
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />} Obtener token
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 /* ---------- Modal de confirmación de borrado ---------- */
 const ConfirmDeleteModal = ({ producto, onCancel, onConfirm, isSubmitting }) => {
@@ -90,7 +24,7 @@ const ConfirmDeleteModal = ({ producto, onCancel, onConfirm, isSubmitting }) => 
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-rose-600">
           <AlertTriangle className="h-7 w-7" />
         </div>
-        <h3 className="!text-lg font-bold text-slate-800">¿Eliminar producto?</h3>
+        <h3 className="text-lg! font-bold text-slate-800">¿Eliminar producto?</h3>
         <p className="mt-1 text-sm text-slate-500">
           <b className="text-slate-700">{producto.ref}</b> — {producto.label}<br />Esta acción no se puede deshacer.
         </p>
@@ -116,8 +50,8 @@ const Badge = ({ on, children }) => (
 
 /* ---------- Página principal ---------- */
 export const ProductosDolibarr = () => {
-  const [tieneKey, setTieneKey] = useState(Boolean(getApiKey()));
-  const [keyModal, setKeyModal] = useState(!getApiKey());
+  const { token } = useAuth();
+  const tieneToken = Boolean(token);
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState(null);
   const [aEliminar, setAEliminar] = useState(null);
@@ -126,7 +60,7 @@ export const ProductosDolibarr = () => {
   const {
     productos, page, setPage, buscar, loading, isSubmitting, error, recargar,
     crearProducto, actualizarProducto, eliminarProducto, hasNextPage,
-  } = useProductosDolibarr({ limit: LIMIT, enabled: tieneKey });
+  } = useProductosDolibarr({ limit: LIMIT, enabled: tieneToken });
 
   // Búsqueda con debounce
   useEffect(() => {
@@ -163,53 +97,42 @@ export const ProductosDolibarr = () => {
     else toast.error(res.error);
   };
 
-  const enVenta = productos.filter((p) => String(p.status) === '1').length;
-  const stats = [
-    { label: 'En esta página', value: productos.length, I: Boxes, c: 'from-indigo-500 to-violet-500' },
-    { label: 'En venta', value: enVenta, I: ShoppingCart, c: 'from-emerald-500 to-teal-500' },
-    { label: 'Página', value: page + 1, I: Package, c: 'from-fuchsia-500 to-pink-500' },
-  ];
+  if (!tieneToken) {
+    return (
+      <section className="mx-auto max-w-xl rounded-lg border border-border bg-card p-6 text-center">
+        <h1 className="text-xl font-semibold text-foreground">Inicia sesión para consultar productos</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Esta sección utiliza el token de tu sesión de usuario.</p>
+        <Link to="/login" className="mt-5 inline-flex min-h-10 items-center rounded-md bg-hiper-navy px-4 text-sm font-medium text-white hover:bg-hiper-navy-dark">Ir a iniciar sesión</Link>
+      </section>
+    );
+  }
 
   return (
     <section className="mx-auto max-w-7xl space-y-6">
       <Toaster position="top-right" toastOptions={{ style: { borderRadius: '14px', fontSize: '14px' } }} />
 
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-900 p-8 text-white shadow-xl">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-fuchsia-500/30 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-indigo-500/30 blur-3xl" />
+      <div className="relative overflow-hidden rounded-3xl p-2">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full " />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 rounded-full" />
         <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur">
-              <span className={`h-2 w-2 rounded-full ${tieneKey && !error ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-              {tieneKey ? (error ? 'Error de conexión' : 'Conectado a Dolibarr') : 'Sin API key'}
+              <span className={`h-2 w-2 rounded-full ${!error ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+              {error ? 'Error de conexión' : 'Sesión conectada a Dolibarr'}
             </span>
-            <h1 className="mt-3 !text-3xl font-extrabold tracking-tight md:!text-4xl">Gestión de Productos</h1>
-            <p className="mt-1 text-sm text-indigo-200">CRUD conectado a la API REST de Dolibarr</p>
+            <h1 className="mt-3 text-3xl! font-extrabold tracking-tight md:text-4xl!">Gestión de Productos</h1>
+            <p className="mt-1 text-sm">CRUD conectado a la API REST de Dolibarr</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button id="btn-config-key" onClick={() => setKeyModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold backdrop-blur transition hover:bg-white/20">
-              <KeyRound className="h-4 w-4" /> API key
-            </button>
-            <button id="btn-nuevo-producto" onClick={abrirNuevo} disabled={!tieneKey}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-indigo-700 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-50">
+            <button id="btn-nuevo-producto" onClick={abrirNuevo}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50">
               <Plus className="h-4 w-4" /> Nuevo producto
             </button>
           </div>
         </div>
 
-        <div className="relative mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {stats.map(({ label, value, I, c }) => (
-            <div key={label} className="flex items-center gap-3 rounded-2xl bg-white/10 p-4 backdrop-blur ring-1 ring-white/10">
-              <div className={`rounded-xl bg-gradient-to-br ${c} p-2.5 shadow-lg`}><I className="h-5 w-5" /></div>
-              <div>
-                <p className="text-2xl font-bold leading-none">{value}</p>
-                <p className="mt-1 text-xs text-indigo-200">{label}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+       
       </div>
 
       {/* Toolbar */}
@@ -220,7 +143,7 @@ export const ProductosDolibarr = () => {
             placeholder="Buscar por referencia o etiqueta..."
             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15" />
         </div>
-        <button id="btn-recargar" onClick={recargar} disabled={loading || !tieneKey}
+        <button id="btn-recargar" onClick={recargar} disabled={loading}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50">
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Recargar
         </button>
@@ -234,7 +157,6 @@ export const ProductosDolibarr = () => {
             <p className="font-semibold">No se pudo cargar la lista</p>
             <p className="text-rose-600/80">{error}</p>
           </div>
-          <button onClick={() => setKeyModal(true)} className="font-semibold underline">Revisar API key</button>
         </div>
       )}
 
@@ -314,7 +236,7 @@ export const ProductosDolibarr = () => {
                   <td colSpan={6} className="px-5 py-16 text-center">
                     <Boxes className="mx-auto h-10 w-10 text-slate-300" />
                     <p className="mt-2 font-semibold text-slate-600">
-                      {tieneKey ? 'No hay productos' : 'Configura tu API key para comenzar'}
+                      No hay productos
                     </p>
                   </td>
                 </tr>
@@ -345,10 +267,6 @@ export const ProductosDolibarr = () => {
       )}
       <ConfirmDeleteModal producto={aEliminar} isSubmitting={isSubmitting}
         onCancel={() => setAEliminar(null)} onConfirm={handleDelete} />
-      {keyModal && (
-        <ApiKeyModal onClose={() => setKeyModal(false)}
-          onSaved={() => { setTieneKey(true); recargar(); }} />
-      )}
     </section>
   );
 };

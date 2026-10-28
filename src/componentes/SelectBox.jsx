@@ -9,7 +9,9 @@ export default function SelectBox() {
   const handleChange = (event) => {
     selectWarehouse(event.target.value);
     const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('buscar');
     nextParams.delete('page');
+    nextParams.delete('coincidenciasCategorias');
     setSearchParams(nextParams);
   };
 

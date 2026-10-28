@@ -4,10 +4,10 @@ El catálogo consulta directamente la API REST de Dolibarr desde el navegador. N
 
 1. Copia `.env.example` como `.env.local` y ajusta `VITE_DOLIBARR_URL` si la instancia usa otra dirección.
 2. Inicia la aplicación con `npm run dev`.
-3. Abre `/dolibarr/productos`, configura la API key o inicia sesión para obtener un token.
-4. Regresa al catálogo; las categorías del sidebar y los productos se consultan directamente en Dolibarr.
+3. Configura la API key en `/dolibarr/productos`, o define `VITE_DOLIBARR_API_KEY` en `.env.local` para el entorno de desarrollo y reinicia Vite.
+4. Regresa al catálogo; las categorías, almacenes y productos se consultan directamente en Dolibarr, incluso después de limpiar `localStorage` si está definida la variable del entorno.
 
-Las llamadas desde el navegador incluyen la clave en la cabecera `DOLAPIKEY`, así que queda accesible para quien use el navegador. La instancia Dolibarr también debe permitir solicitudes CORS desde el origen de la aplicación. Para un catálogo público en producción, una clave administrativa no debe exponerse en el cliente.
+Las llamadas desde el navegador incluyen la clave en la cabecera `DOLAPIKEY`, así que queda accesible para quien use el navegador. La variable `VITE_DOLIBARR_API_KEY` sirve solo para desarrollo local; Vite la incluye en el bundle y no debe usarse con una clave administrativa ni en producción. La instancia Dolibarr también debe permitir solicitudes CORS desde el origen de la aplicación.
 
 El catálogo muestra artículos activos, precio TTC en Bs cuando Dolibarr lo devuelve y disponibilidad según `stock_reel`.
 

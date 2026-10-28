@@ -79,11 +79,13 @@ export function CarritoProvider({ children }) {
     setProductos((current) => current.filter((item) => item.id !== String(id)));
   };
 
+  const vaciarCarrito = () => setProductos([]);
+
   const cantidadTotal = productos.reduce((total, item) => total + item.cantidad, 0);
   const subtotal = productos.reduce((total, item) => total + item.precio * item.cantidad, 0);
 
   return (
-    <CarritoContext.Provider value={{ productos, cantidadTotal, subtotal, agregarProducto, aumentarCantidad, disminuirCantidad, eliminarProducto }}>
+    <CarritoContext.Provider value={{ productos, cantidadTotal, subtotal, agregarProducto, aumentarCantidad, disminuirCantidad, eliminarProducto, vaciarCarrito }}>
       {children}
     </CarritoContext.Provider>
   );

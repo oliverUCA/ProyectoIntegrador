@@ -2,7 +2,7 @@ import { useEffect, useReducer, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Check, Folder, Loader2, RefreshCw } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../components/ui/carousel';
-import { getApiKey } from '../services/dolibarrClient';
+import { getApiKey, getErrorMessage } from '../services/dolibarrClient';
 import { getCategorias } from '../services/categoriasService';
 
 export default function Categorias({ variant = 'sidebar' }) {
@@ -12,6 +12,7 @@ export default function Categorias({ variant = 'sidebar' }) {
   const [result, setResult] = useState({ key: null, categorias: [], error: '' });
   const apiKey = getApiKey();
   const selectedCategory = searchParams.get('categoria') || '';
+  const foundCategoryIds = new Set((searchParams.get('coincidenciasCategorias') || '').split(',').filter(Boolean));
   const queryKey = `${Boolean(apiKey)}:${revision}`;
   const loading = Boolean(apiKey) && result.key !== queryKey;
   const categorias = result.key === queryKey ? result.categorias : [];
@@ -39,7 +40,7 @@ export default function Categorias({ variant = 'sidebar' }) {
       })
       .catch((err) => {
         if (!controller.signal.aborted) {
-          setResult({ key: queryKey, categorias: [], error: err.response?.data?.error || err.message });
+          setResult({ key: queryKey, categorias: [], error: getErrorMessage(err) });
         }
       });
 
@@ -50,7 +51,9 @@ export default function Categorias({ variant = 'sidebar' }) {
     const nextParams = new URLSearchParams(searchParams);
     if (categoryId) nextParams.set('categoria', categoryId);
     else nextParams.delete('categoria');
+    nextParams.delete('buscar');
     nextParams.delete('page');
+    nextParams.delete('coincidenciasCategorias');
     setSearchParams(nextParams);
   };
 
@@ -91,41 +94,51 @@ export default function Categorias({ variant = 'sidebar' }) {
       {horizontal ? (
         <Carousel opts={{ align: 'start', dragFree: true }} className="px-10">
           <CarouselContent className="-ml-2 py-2">
-            {categorias.map((categoria) => (
-              <CarouselItem key={categoria.id} className="pl-2">
-                <button
+            {categorias.map((categoria) => {
+              const isSelected = selectedCategory === categoria.id;
+              const isMatch = foundCategoryIds.has(categoria.id);
+              return (
+                <CarouselItem key={categoria.id} className="pl-2">
+                  <button
                   type="button"
-                  aria-pressed={selectedCategory === categoria.id}
-                  onClick={() => seleccionarCategoria(selectedCategory === categoria.id ? '' : categoria.id)}
+                  aria-pressed={isSelected}
+                  aria-current={isSelected || isMatch ? 'true' : undefined}
+                  onClick={() => seleccionarCategoria(isSelected ? '' : categoria.id)}
                   title={categoria.label}
-                  className={`flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedCategory === categoria.id ? 'bg-white text-orange-700' : 'text-white hover:bg-white/15'}`}
+                  className={`flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${isSelected ? 'bg-white text-orange-700' : isMatch ? 'bg-white/25 text-white ring-1 ring-white/80' : 'text-white hover:bg-white/15'}`}
                 >
                   <span>{categoria.label}</span>
-                  {selectedCategory === categoria.id && <Check className="size-4 shrink-0" aria-hidden="true" />}
-                </button>
-              </CarouselItem>
-            ))}
+                  {(isSelected || isMatch) && <Check className="size-4 shrink-0" aria-hidden="true" />}
+                  </button>
+                </CarouselItem>
+              );
+            })}
           </CarouselContent>
           <CarouselPrevious />
           <CarouselNext />
         </Carousel>
       ) : (
         <ul className="max-h-72 space-y-1 overflow-y-auto">
-          {categorias.map((categoria) => (
-            <li key={categoria.id}>
-              <button
-                type="button"
-                aria-pressed={selectedCategory === categoria.id}
-                onClick={() => seleccionarCategoria(selectedCategory === categoria.id ? '' : categoria.id)}
-                title={categoria.label}
-                className={`flex min-h-11 w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 md:justify-start md:px-3 ${selectedCategory === categoria.id ? 'bg-hiper-navy text-white' : 'bg-background/60 text-sidebar-foreground hover:bg-hiper-orange-light'}`}
-              >
-                <Folder className="size-4 shrink-0 text-hiper-orange" aria-hidden="true" />
-                <span className="sr-only wrap-break-word md:not-sr-only">{categoria.label}</span>
-                {selectedCategory === categoria.id && <Check className="size-4 shrink-0" aria-hidden="true" />}
-              </button>
-            </li>
-          ))}
+          {categorias.map((categoria) => {
+            const isSelected = selectedCategory === categoria.id;
+            const isMatch = foundCategoryIds.has(categoria.id);
+            return (
+              <li key={categoria.id}>
+                <button
+                  type="button"
+                  aria-pressed={isSelected}
+                  aria-current={isSelected || isMatch ? 'true' : undefined}
+                  onClick={() => seleccionarCategoria(isSelected ? '' : categoria.id)}
+                  title={categoria.label}
+                  className={`flex min-h-11 w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 md:justify-start md:px-3 ${isSelected ? 'bg-hiper-navy text-white' : isMatch ? 'bg-hiper-orange-light text-hiper-navy ring-1 ring-hiper-orange' : 'bg-background/60 text-sidebar-foreground hover:bg-hiper-orange-light'}`}
+                >
+                  <Folder className="size-4 shrink-0 text-hiper-orange" aria-hidden="true" />
+                  <span className="sr-only wrap-break-word md:not-sr-only">{categoria.label}</span>
+                  {(isSelected || isMatch) && <Check className="size-4 shrink-0" aria-hidden="true" />}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 

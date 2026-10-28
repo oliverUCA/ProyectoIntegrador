@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, ImageOff, Loader2, Package, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, ShoppingCart } from 'lucide-react';
 import { getApiKey } from '../services/dolibarrClient';
-import { getImagenProducto, getProductoCatalogoById } from '../services/catalogoService';
+import { getProductoCatalogoById } from '../services/catalogoService';
 import { useCarrito } from '../hooks/useCarrito';
 import { useAlmacen } from '../hooks/useAlmacen';
+import ImagenProducto from '../componentes/ImagenProducto';
 
 const money = new Intl.NumberFormat('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -16,7 +17,6 @@ const ProductDetail = () => {
   const { selectedId: warehouseId } = useAlmacen();
   const [revision, setRevision] = useState(0);
   const [result, setResult] = useState({ key: null, product: null, error: '' });
-  const [imageResult, setImageResult] = useState({ key: null, url: '' });
   const [agregado, setAgregado] = useState(false);
   const apiKey = getApiKey();
   const validId = /^\d+$/.test(id || '');
@@ -26,7 +26,6 @@ const ProductDetail = () => {
   const cantidadEnCarrito = product ? productosCarrito.find((item) => item.id === product.id)?.cantidad || 0 : 0;
   const limiteAlcanzado = product?.stock != null && cantidadEnCarrito >= product.stock;
   const error = result.key === queryKey ? result.error : '';
-  const imageUrl = imageResult.key === `${queryKey}:${product?.imagePath}` ? imageResult.url : '';
   const returnTo = location.state?.from || '/productos';
 
   useEffect(() => {
@@ -53,26 +52,6 @@ const ProductDetail = () => {
       });
     return () => controller.abort();
   }, [apiKey, warehouseId, id, queryKey, revision, validId]);
-
-  useEffect(() => {
-    if (!product?.imagePath) return undefined;
-    const controller = new AbortController();
-    let objectUrl = '';
-    const imageKey = `${queryKey}:${product.imagePath}`;
-    getImagenProducto(product.imagePath, { signal: controller.signal })
-      .then((url) => {
-        objectUrl = url;
-        if (!controller.signal.aborted) setImageResult({ key: imageKey, url });
-        else URL.revokeObjectURL(url);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setImageResult({ key: imageKey, url: '' });
-      });
-    return () => {
-      controller.abort();
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [product, queryKey]);
 
   const volver = () => {
     if (location.key !== 'default') navigate(-1);
@@ -126,16 +105,7 @@ const ProductDetail = () => {
         <ArrowLeft className="size-4" aria-hidden="true" /> Volver al catálogo
       </button>
       <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <div className="flex min-h-72 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-          {imageUrl ? (
-            <img src={imageUrl} alt={product.name} className="max-h-112 w-full object-contain" onError={() => setImageResult({ key: `${queryKey}:${product.imagePath}`, url: '' })} />
-          ) : (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground" aria-label="Imagen no disponible">
-              {product.imagePath ? <ImageOff className="size-10" aria-hidden="true" /> : <Package className="size-10" aria-hidden="true" />}
-              <span className="text-sm">Imagen no disponible</span>
-            </div>
-          )}
-        </div>
+        <ImagenProducto product={product} className="min-h-72 rounded-lg border border-border bg-muted" imageClassName="max-h-112 w-full object-contain" iconClassName="size-10" />
         <div className="py-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-hiper-orange">Producto</p>
           <h1 className="mt-2 text-2xl font-bold text-foreground">{product.name}</h1>
@@ -154,7 +124,7 @@ const ProductDetail = () => {
           </div>
           <button
             type="button"
-            onClick={() => setAgregado(agregarProducto({ ...product, imageUrl }))}
+            onClick={() => setAgregado(agregarProducto(product))}
             disabled={product.available === false || limiteAlcanzado}
             className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-hiper-orange px-4 text-sm font-semibold text-white hover:bg-hiper-orange-dark disabled:cursor-not-allowed disabled:opacity-50"
           >

@@ -8,7 +8,10 @@ export const DOLIBARR_BASE_URL =
 const STORAGE_KEY = 'dolibarr_api_key';
 
 export const getApiKey = () =>
-  localStorage.getItem(STORAGE_KEY) || localStorage.getItem('jwt-token') || '';
+  localStorage.getItem('jwt-token') ||
+  localStorage.getItem(STORAGE_KEY) ||
+  import.meta.env.VITE_DOLIBARR_API_KEY ||
+  '';
 
 export const setApiKey = (key) => {
   if (key) localStorage.setItem(STORAGE_KEY, key.trim());
@@ -36,8 +39,9 @@ dolibarrClient.interceptors.request.use((config) => {
 export const getErrorMessage = (error) => {
   if (axios.isCancel(error)) return 'Petición cancelada';
   const data = error?.response?.data;
+  const apiError = data?.error;
   return (
-    data?.error?.message ||
+    (typeof apiError === 'string' ? apiError : apiError?.message) ||
     data?.message ||
     error?.message ||
     'Error desconocido al comunicarse con Dolibarr'
